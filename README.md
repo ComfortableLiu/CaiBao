@@ -1,95 +1,108 @@
-# 菜包
+# 菜包（CaiBao）
 
-桌面 AI 聊天客户端（Electron + Rspack + React），兼容 OpenAI API 格式。
+CaiBao 是一个基于 Electron 的桌面 AI 聊天客户端，支持 OpenAI API 格式，并内置 DashScope 模式（原生 HTTP Generation + 兼容模型同步）。
+
+## 技术栈
+
+- Electron 34
+- Rspack 2
+- React 18 + TypeScript（strict）
+- Zustand（状态管理）
+- react-markdown + remark/rehype（Markdown、代码高亮、表格、公式渲染）
+- electron-builder（安装包构建）
+
+## 项目结构
+
+```text
+src/
+├── main/       # Electron 主进程（窗口、IPC、本地存储）
+├── preload/    # 预加载脚本（主渲染桥接）
+├── renderer/   # React 前端（页面、组件、store、LLM 服务）
+└── shared/     # 跨进程共享类型与配置
+```
+
+构建产物：`dist/`  
+打包产物：`release/`
 
 ## 环境要求
 
 - Node.js 20+
 - npm 10+
+- macOS 打包场景建议安装 Xcode Command Line Tools
 
-## 开发
+## 本地开发
 
 ```bash
 npm install
 npm run dev
 ```
 
-将启动：
+`npm run dev` 会并行启动：
 
-1. 渲染进程 Rspack Dev Server（http://localhost:5173）
-2. 主进程 / Preload 监听构建
-3. Electron 窗口
+1. Renderer 开发服务器（默认 `http://localhost:5173`）
+2. Main / Preload 增量构建
+3. Electron 应用窗口
 
-## 构建与打包
+## 常用命令
 
-```bash
-npm run build    # 构建 main / preload / renderer
-npm run dist     # electron-builder 安装包（输出到 release/）
-```
+| 命令 | 说明 |
+|---|---|
+| `npm run dev` | 本地开发（watch + Electron） |
+| `npm run build` | 生产构建（main/preload/renderer） |
+| `npm run build:renderer` | 仅构建前端 |
+| `npm run dist` | 全平台默认打包（按 electron-builder 配置） |
+| `npm run dist:mac` | 构建 macOS arm64 DMG，并执行 ad-hoc 重签名 |
+| `npm run sign:mac` | 对已有 `release/**/.app` 执行 ad-hoc 重签名 |
+| `npm run fix:mac-gatekeeper` | 清除应用隔离属性（`com.apple.quarantine`） |
+| `npm run lint` | ESLint 检查 |
+| `npm run format` | Prettier 格式化 |
 
-### macOS：提示「已损坏，无法打开」
+## 配置与运行机制
 
-多数是 **Gatekeeper / 隔离属性** 或 **签名不完整**，不是 DMG 真损坏。
+- Provider 模式：
+  - `dashscope`：聊天走 DashScope 原生 HTTP Generation；模型同步走兼容接口
+  - `openai-compatible`：统一走 OpenAI 兼容接口
+- 设置数据存储在本地用户目录（`userData/caibao/`），包含模型列表、已启用模型和 API 配置。
+- 聊天会话与消息持久化在本地；支持流式输出、思考过程、联网搜索结果、Token 用量。
 
-| 原因 | 说明 |
-|------|------|
-| `com.apple.quarantine` | 从浏览器、网盘、聊天工具下载后常见 |
-| 仅 linker-signed | 未完整 ad-hoc 签名时，Apple Silicon 易误报「已损坏」 |
-| 未公证 | 无 Apple 开发者公证时，他人 Mac 需首次「右键 → 打开」 |
+## Markdown 渲染能力
 
-**分发方请重新打包（含完整签名）：**
+- GFM（表格、任务列表等）
+- 代码高亮（highlight.js）
+- 数学公式（remark-math + rehype-katex）
+- 表格横向滚动与列宽上限
+
+## macOS 打包与分发
+
+### 构建
 
 ```bash
 npm run dist:mac
 ```
 
-打包流程会在 `electron-builder` 之后执行 `scripts/sign-mac-app.cjs`，对 `.app` 做 **ad-hoc 深度签名**（`codesign --deep --sign -`）。
+该流程会：
 
-**用户安装后任选一种：**
+1. 构建 `dist/`
+2. 生成 arm64 `.app` 与 `.dmg`
+3. 对 `.app` 执行 ad-hoc 深度签名（`codesign --deep --sign -`）
+
+### 常见问题：应用提示“已损坏，无法打开”
+
+该问题通常由 Gatekeeper 与隔离属性导致，并不一定表示包体损坏。处理方式：
 
 ```bash
 npm run fix:mac-gatekeeper
-# 或
+# 或手动
 xattr -cr /Applications/菜包.app
 ```
 
-或在 Finder 中 **右键「菜包」→ 打开**（首次需确认）。
+若仍被拦截，首次可在 Finder 中右键应用并选择“打开”。
 
-**系统要求：** macOS **11.0+**（Electron 34）；M1/M2/M3 请使用 **arm64** 安装包（`npm run dist:mac` 默认 `--arm64`）。
+### 正式发布建议
 
-**对外正式发布：** 需 Apple 开发者账号做 **Developer ID 签名 + 公证**（配置 `CSC_*`、`APPLE_ID` 等）。未公证包仍可能需要用户「右键打开」或清除隔离属性。
+对外分发建议配置 Apple Developer ID 签名与 notarization（`CSC_*`、`APPLE_ID` 等环境变量），以避免终端用户手工绕过 Gatekeeper。
 
-## 设置说明
+## 版本与兼容性
 
-1. 打开 **设置** 页，填写 **Base URL**（如 `https://api.openai.com/v1` 或 DeepSeek 等兼容地址）
-2. 填写 **API Key**
-3. 点击 **保存设置**，再点击 **同步模型列表**
-4. 勾选要使用的模型
-5. 在 **聊天** 页选择模型并开始对话
-
-## 功能概览
-
-- 多会话管理，首条消息后自动总结标题
-- 流式输出思考过程（`reasoning_content`）与回复
-- Markdown / 图片渲染，消息复制
-- Token 用量展示（悬停查看明细）
-- 聊天记录本地磁盘保存（`userData/caibao/`）
-
-## 手动测试清单
-
-- [ ] 配置 OpenAI / DeepSeek 等兼容端点并保存
-- [ ] 同步模型列表并勾选模型
-- [ ] 新建多会话、切换、删除（需二次点击确认）
-- [ ] 发送消息，验证流式输出与停止生成
-- [ ] 验证 Markdown、代码块、图片链接
-- [ ] 悬停 Token 查看 prompt/completion/total
-- [ ] 复制消息内容
-- [ ] 重启应用后会话与消息恢复
-
-## 技术栈
-
-- Electron 34
-- Rspack 1.x
-- React 18 + TypeScript
-- OpenAI SDK（渲染进程直连 API）
-- Zustand、react-markdown
+- 当前 macOS 最低版本：`11.0`（Apple Silicon 推荐使用 arm64 包）
+- Electron 升级时请同步验证：签名流程、LSMinimumSystemVersion、打包脚本
