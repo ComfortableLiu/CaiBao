@@ -1,0 +1,100 @@
+{
+  "name": "caibao",
+  "version": "0.2.0",
+  "description": "菜包 - 桌面 AI 聊天客户端（OpenAI 兼容）",
+  "main": "dist/main/index.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "dev:renderer": "rspack serve -c rspack.renderer.config.mjs",
+    "dev:main": "rspack build -c rspack.main.config.mjs --watch",
+    "dev:preload": "rspack build -c rspack.preload.config.mjs --watch",
+    "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:preload\" \"npm:dev:electron\"",
+    "build:main": "rspack build -c rspack.main.config.mjs --mode production",
+    "build:preload": "rspack build -c rspack.preload.config.mjs --mode production",
+    "build:renderer": "rspack build -c rspack.renderer.config.mjs --mode production",
+    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac --arm64 && node scripts/sign-mac-app.cjs",
+    "sign:mac": "node scripts/sign-mac-app.cjs",
+    "fix:mac-gatekeeper": "bash scripts/fix-mac-gatekeeper.sh",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "katex": "^0.17.0",
+    "openai": "^4.104.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "rehype-external-links": "^3.0.0",
+    "rehype-highlight": "^7.0.2",
+    "rehype-katex": "^7.0.1",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0",
+    "uuid": "^11.1.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@rspack/cli": "^2.0.4",
+    "@rspack/core": "^2.0.4",
+    "@rspack/dev-server": "^2.0.1",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.20.0",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.7.3",
+    "wait-on": "^8.0.2"
+  },
+  "build": {
+    "appId": "com.caibao.desktop",
+    "productName": "菜包",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "minimumSystemVersion": "11.0",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "LSMinimumSystemVersion": "11.0"
+      }
+    },
+    "afterSign": "scripts/after-sign-mac.cjs",
+    "dmg": {
+      "writeUpdateInfo": false
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
+  }
+}

@@ -1,0 +1,122 @@
+/* highlight.js 语法高亮 — 与 global.css 主题变量联动 */
+
+[data-theme='dark'] {
+  --code-syntax-keyword: #c792ea;
+  --code-syntax-string: #c3e88d;
+  --code-syntax-number: #f78c6c;
+  --code-syntax-function: #82aaff;
+  --code-syntax-title: #ffcb6b;
+  --code-syntax-comment: #5c6370;
+  --code-syntax-variable: #eeffff;
+  --code-syntax-attr: #ffcb6b;
+  --code-syntax-built_in: #89ddff;
+  --code-syntax-meta: #89ddff;
+  --code-syntax-literal: #f78c6c;
+  --code-syntax-regexp: #89ddff;
+  --code-syntax-selector: #c3e88d;
+}
+
+[data-theme='light'] {
+  --code-syntax-keyword: #a626a4;
+  --code-syntax-string: #50a14f;
+  --code-syntax-number: #986801;
+  --code-syntax-function: #4078f2;
+  --code-syntax-title: #c18401;
+  --code-syntax-comment: #a0a1a7;
+  --code-syntax-variable: #383a42;
+  --code-syntax-attr: #c18401;
+  --code-syntax-built_in: #0184bc;
+  --code-syntax-meta: #4078f2;
+  --code-syntax-literal: #986801;
+  --code-syntax-regexp: #0184bc;
+  --code-syntax-selector: #50a14f;
+}
+
+.markdown-body pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--code-fg);
+}
+
+/* 避免影响行内代码的背景色（行内代码会由 chat.css 设置背景） */
+
+.markdown-body .hljs-comment,
+.markdown-body .hljs-quote {
+  color: var(--code-syntax-comment);
+  font-style: italic;
+}
+
+.markdown-body .hljs-keyword,
+.markdown-body .hljs-selector-tag,
+.markdown-body .hljs-addition {
+  color: var(--code-syntax-keyword);
+}
+
+.markdown-body .hljs-string,
+.markdown-body .hljs-meta .hljs-string,
+.markdown-body .hljs-regexp,
+.markdown-body .hljs-selector-attr,
+.markdown-body .hljs-selector-pseudo {
+  color: var(--code-syntax-string);
+}
+
+.markdown-body .hljs-number,
+.markdown-body .hljs-literal {
+  color: var(--code-syntax-number);
+}
+
+.markdown-body .hljs-title,
+.markdown-body .hljs-title.class_,
+.markdown-body .hljs-title.function_,
+.markdown-body .hljs-section,
+.markdown-body .hljs-type {
+  color: var(--code-syntax-title);
+}
+
+.markdown-body .hljs-built_in,
+.markdown-body .hljs-symbol,
+.markdown-body .hljs-bullet {
+  color: var(--code-syntax-built_in);
+}
+
+.markdown-body .hljs-function,
+.markdown-body .hljs-title.function_ {
+  color: var(--code-syntax-function);
+}
+
+.markdown-body .hljs-variable,
+.markdown-body .hljs-template-variable,
+.markdown-body .hljs-params,
+.markdown-body .hljs-attribute {
+  color: var(--code-syntax-variable);
+}
+
+.markdown-body .hljs-attr,
+.markdown-body .hljs-name,
+.markdown-body .hljs-tag {
+  color: var(--code-syntax-attr);
+}
+
+.markdown-body .hljs-meta,
+.markdown-body .hljs-meta .hljs-keyword {
+  color: var(--code-syntax-meta);
+}
+
+.markdown-body .hljs-deletion {
+  color: var(--danger);
+}
+
+.markdown-body .hljs-emphasis {
+  font-style: italic;
+}
+
+.markdown-body .hljs-strong {
+  font-weight: 600;
+}
+
+.markdown-body .hljs-link {
+  color: var(--accent);
+  text-decoration: underline;
+}
