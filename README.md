@@ -52,6 +52,9 @@ npm run dev
 | `npm run build:renderer` | 仅构建前端 |
 | `npm run dist` | 全平台默认打包（按 electron-builder 配置） |
 | `npm run dist:mac` | 构建 macOS arm64 DMG，并执行 ad-hoc 重签名 |
+| `npm run dist:win` | 构建 Windows x64 安装包（NSIS）+ 便携版（portable） |
+| `npm run dist:win:portable` | 仅构建 Windows x64 便携版（免安装） |
+| `npm run dist:win:all` | 显式构建 Windows x64 NSIS + portable |
 | `npm run sign:mac` | 对已有 `release/**/.app` 执行 ad-hoc 重签名 |
 | `npm run fix:mac-gatekeeper` | 清除应用隔离属性（`com.apple.quarantine`） |
 | `npm run lint` | ESLint 检查 |
@@ -101,6 +104,45 @@ xattr -cr /Applications/菜包.app
 ### 正式发布建议
 
 对外分发建议配置 Apple Developer ID 签名与 notarization（`CSC_*`、`APPLE_ID` 等环境变量），以避免终端用户手工绕过 Gatekeeper。
+
+## Windows 打包与分发
+
+### 构建
+
+```bash
+npm run dist:win
+```
+
+默认生成 Windows x64 两类产物（位于 `release/`）：
+
+- NSIS 安装包：`菜包-<version>-win-x64.exe`
+- Portable 免安装包：`菜包-<version>-win-portable-x64.exe`
+
+当前 NSIS 策略：
+
+- 非 one-click 安装（可选择安装目录）
+- 创建桌面与开始菜单快捷方式
+
+### 图标与品牌资源
+
+- 若未提供图标，electron-builder 会使用默认 Electron 图标。
+- 建议在仓库中提供：
+  - `build/icon.ico`（Windows）
+  - `build/icon.icns`（macOS）
+- 添加后可在 `build.win.icon` / `build.mac.icon` 显式引用，保证品牌一致性。
+
+### 分发注意事项
+
+- 未配置代码签名证书时，首次运行可能触发 SmartScreen 警告。
+- 对外正式发布建议配置 Windows 代码签名（`CSC_LINK` / `CSC_KEY_PASSWORD`），以降低拦截率并提升安装可信度。
+
+示例（PowerShell）：
+
+```powershell
+$env:CSC_LINK="C:\cert\codesign.pfx"
+$env:CSC_KEY_PASSWORD="your-password"
+npm run dist:win
+```
 
 ## 版本与兼容性
 

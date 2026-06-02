@@ -17,6 +17,9 @@
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac --arm64 && node scripts/sign-mac-app.cjs",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:win:portable": "npm run build && electron-builder --win portable --x64",
+    "dist:win:all": "npm run build && electron-builder --win nsis portable --x64",
     "sign:mac": "node scripts/sign-mac-app.cjs",
     "fix:mac-gatekeeper": "bash scripts/fix-mac-gatekeeper.sh",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
@@ -60,6 +63,7 @@
     "wait-on": "^8.0.2"
   },
   "build": {
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "appId": "com.caibao.desktop",
     "productName": "菜包",
     "directories": {
@@ -71,6 +75,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "build/icons/icon.icns",
       "target": [
         "dmg"
       ],
@@ -87,9 +92,19 @@
       "writeUpdateInfo": false
     },
     "win": {
+      "icon": "build/icons/icon.ico",
+      "signAndEditExecutable": false,
       "target": [
-        "nsis"
+        "nsis",
+        "portable"
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "菜包"
     },
     "linux": {
       "target": [
