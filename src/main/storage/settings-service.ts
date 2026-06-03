@@ -52,12 +52,27 @@ function toAppSettings(persisted: SettingsPersisted): AppSettings {
       apiKey: decryptApiKey(persisted.dashscope.encryptedApiKey),
       availableModels: persisted.dashscope.availableModels,
       enabledModelIds: persisted.dashscope.enabledModelIds,
+      modelVisionById: persisted.dashscope.modelVisionById ?? {},
     },
     openaiCompatible: {
       baseURL: persisted.openaiCompatible.baseURL,
       apiKey: decryptApiKey(persisted.openaiCompatible.encryptedApiKey),
       availableModels: persisted.openaiCompatible.availableModels,
       enabledModelIds: persisted.openaiCompatible.enabledModelIds,
+      modelVisionById: persisted.openaiCompatible.modelVisionById ?? {},
+    },
+    objectStorage: {
+      enabled: persisted.objectStorage.enabled,
+      endpoint: persisted.objectStorage.endpoint,
+      region: persisted.objectStorage.region,
+      bucket: persisted.objectStorage.bucket,
+      accessKeyId: decryptApiKey(persisted.objectStorage.encryptedAccessKeyId),
+      secretAccessKey: decryptApiKey(persisted.objectStorage.encryptedSecretAccessKey),
+      forcePathStyle: persisted.objectStorage.forcePathStyle,
+      publicBaseUrl: persisted.objectStorage.publicBaseUrl,
+      keyPrefix: persisted.objectStorage.keyPrefix,
+      usePresignedUrls: persisted.objectStorage.usePresignedUrls,
+      presignedUrlExpirySeconds: persisted.objectStorage.presignedUrlExpirySeconds,
     },
     theme: persisted.theme ?? 'system',
     enableThinking: persisted.enableThinking ?? true,
@@ -99,6 +114,33 @@ function applyDashScopeInput(
   if (input.enabledModelIds !== undefined) {
     persisted.dashscope.enabledModelIds = input.enabledModelIds;
   }
+  if (input.modelVisionById !== undefined) {
+    persisted.dashscope.modelVisionById = input.modelVisionById;
+  }
+}
+
+function applyObjectStorageInput(
+  persisted: SettingsPersisted,
+  input: NonNullable<SettingsSaveInput['objectStorage']>,
+): void {
+  const os = persisted.objectStorage;
+  if (input.enabled !== undefined) os.enabled = input.enabled;
+  if (input.endpoint !== undefined) os.endpoint = input.endpoint.trim();
+  if (input.region !== undefined) os.region = input.region.trim();
+  if (input.bucket !== undefined) os.bucket = input.bucket.trim();
+  if (input.accessKeyId !== undefined && input.accessKeyId.length > 0) {
+    os.encryptedAccessKeyId = encryptApiKey(input.accessKeyId);
+  }
+  if (input.secretAccessKey !== undefined && input.secretAccessKey.length > 0) {
+    os.encryptedSecretAccessKey = encryptApiKey(input.secretAccessKey);
+  }
+  if (input.forcePathStyle !== undefined) os.forcePathStyle = input.forcePathStyle;
+  if (input.publicBaseUrl !== undefined) os.publicBaseUrl = input.publicBaseUrl.trim();
+  if (input.keyPrefix !== undefined) os.keyPrefix = input.keyPrefix.trim();
+  if (input.usePresignedUrls !== undefined) os.usePresignedUrls = input.usePresignedUrls;
+  if (input.presignedUrlExpirySeconds !== undefined) {
+    os.presignedUrlExpirySeconds = input.presignedUrlExpirySeconds;
+  }
 }
 
 function applyOpenAICompatibleInput(
@@ -116,6 +158,9 @@ function applyOpenAICompatibleInput(
   }
   if (input.enabledModelIds !== undefined) {
     persisted.openaiCompatible.enabledModelIds = input.enabledModelIds;
+  }
+  if (input.modelVisionById !== undefined) {
+    persisted.openaiCompatible.modelVisionById = input.modelVisionById;
   }
 }
 
@@ -145,6 +190,9 @@ export class SettingsService {
     }
     if (input.enableSearch !== undefined) {
       persisted.enableSearch = input.enableSearch;
+    }
+    if (input.objectStorage) {
+      applyObjectStorageInput(persisted, input.objectStorage);
     }
 
     await writePersisted(persisted);

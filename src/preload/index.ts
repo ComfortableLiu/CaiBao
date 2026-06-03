@@ -3,9 +3,13 @@ import { IPC } from '@shared/ipc';
 import type {
   AppMeta,
   AppSettings,
+  AttachmentUploadInput,
+  AttachmentUploadResult,
   Conversation,
   ConversationMeta,
   Message,
+  MessageAttachment,
+  ObjectStorageTestInput,
   SettingsSaveInput,
 } from '@shared/types';
 
@@ -14,6 +18,18 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.settings.get),
     save: (input: SettingsSaveInput): Promise<AppSettings> =>
       ipcRenderer.invoke(IPC.settings.save, input),
+  },
+  objectStorage: {
+    testConnection: (input: ObjectStorageTestInput): Promise<{ ok: true }> =>
+      ipcRenderer.invoke(IPC.objectStorage.testConnection, input),
+    upload: (input: AttachmentUploadInput): Promise<AttachmentUploadResult> =>
+      ipcRenderer.invoke(IPC.objectStorage.upload, input),
+    deleteByConversation: (conversationId: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.objectStorage.deleteByConversation, conversationId),
+    refreshUrl: (attachment: MessageAttachment): Promise<string> =>
+      ipcRenderer.invoke(IPC.objectStorage.refreshUrl, attachment),
+    deleteKeys: (objectKeys: string[]): Promise<void> =>
+      ipcRenderer.invoke(IPC.objectStorage.deleteKeys, objectKeys),
   },
   storage: {
     getMeta: (): Promise<AppMeta> => ipcRenderer.invoke(IPC.storage.metaGet),

@@ -3,6 +3,13 @@ export const IPC = {
     get: 'settings:get',
     save: 'settings:save',
   },
+  objectStorage: {
+    testConnection: 'objectStorage:testConnection',
+    upload: 'objectStorage:upload',
+    deleteByConversation: 'objectStorage:deleteByConversation',
+    refreshUrl: 'objectStorage:refreshUrl',
+    deleteKeys: 'objectStorage:deleteKeys',
+  },
   storage: {
     metaGet: 'storage:meta:get',
     metaSet: 'storage:meta:set',

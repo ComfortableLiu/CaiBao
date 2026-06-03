@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings, SettingsSaveInput } from '@shared/types';
-import { getActiveProfile, resolveProviderConfig } from '@shared/provider-config';
+import { isObjectStorageReady, isProviderReady } from '@shared/settings-readiness';
 import { getApi } from '../services/api';
 
 interface SettingsState extends AppSettings {
@@ -18,12 +18,27 @@ function createEmptySettings(): AppSettings {
       apiKey: '',
       availableModels: [],
       enabledModelIds: [],
+      modelVisionById: {},
     },
     openaiCompatible: {
       baseURL: 'https://api.openai.com/v1',
       apiKey: '',
       availableModels: [],
       enabledModelIds: [],
+      modelVisionById: {},
+    },
+    objectStorage: {
+      enabled: false,
+      endpoint: '',
+      region: '',
+      bucket: '',
+      accessKeyId: '',
+      secretAccessKey: '',
+      forcePathStyle: true,
+      publicBaseUrl: '',
+      keyPrefix: '',
+      usePresignedUrls: false,
+      presignedUrlExpirySeconds: 86400,
     },
     theme: 'system',
     enableThinking: true,
@@ -45,9 +60,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLocal: (partial) => set({ ...get(), ...partial }),
 }));
 
+/** @deprecated 使用 isProviderReady */
 export function hasEnabledModel(): boolean {
-  const settings = useSettingsStore.getState();
-  const { baseURL, apiKey } = resolveProviderConfig(settings);
-  const profile = getActiveProfile(settings);
-  return Boolean(baseURL && apiKey && profile.enabledModelIds.length > 0);
+  return isProviderReady(useSettingsStore.getState());
 }
+
+export { isObjectStorageReady, isProviderReady };

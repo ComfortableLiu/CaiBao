@@ -18,6 +18,16 @@ export const DASHSCOPE_GENERATION_ENDPOINTS: Record<DashScopeRegion, string> = {
     'https://dashscope-us.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
 };
 
+/** DashScope 多模态 Generation HTTP（含图片 input） */
+export const DASHSCOPE_MULTIMODAL_GENERATION_ENDPOINTS: Record<DashScopeRegion, string> = {
+  'cn-beijing':
+    'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+  'ap-southeast-1':
+    'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+  'us-east-1':
+    'https://dashscope-us.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation',
+};
+
 /** @deprecated 使用 DASHSCOPE_COMPATIBLE_ENDPOINTS */
 export const DASHSCOPE_ENDPOINTS = DASHSCOPE_COMPATIBLE_ENDPOINTS;
 
@@ -38,6 +48,7 @@ export interface ResolvedDashScopeConfig extends ResolvedProviderConfigBase {
   /** 兼容端点，用于拉取模型列表与 UI 能力判断 */
   baseURL: string;
   generationUrl: string;
+  multimodalGenerationUrl: string;
   region: DashScopeRegion;
 }
 
@@ -84,6 +95,7 @@ export function resolveProviderConfig(settings: AppSettings): ResolvedProviderCo
       region,
       baseURL: DASHSCOPE_COMPATIBLE_ENDPOINTS[region],
       generationUrl: DASHSCOPE_GENERATION_ENDPOINTS[region],
+      multimodalGenerationUrl: DASHSCOPE_MULTIMODAL_GENERATION_ENDPOINTS[region],
       apiKey: settings.dashscope.apiKey,
     };
   }

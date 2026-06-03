@@ -1,6 +1,6 @@
 # 菜包（CaiBao）
 
-CaiBao 是一个基于 Electron 的桌面 AI 聊天客户端，支持 OpenAI API 格式，并内置 DashScope 模式（原生 HTTP Generation + 兼容模型同步）。
+CaiBao 是一个基于 Electron 的桌面 AI 聊天客户端（当前 **0.3.0**），支持 OpenAI API 格式，并内置 DashScope 模式（原生 HTTP Generation / 多模态 Generation + 兼容模型同步）。支持图文聊天、S3 兼容对象存储与联网搜索、深度思考等能力。
 
 ## 技术栈
 
@@ -60,13 +60,45 @@ npm run dev
 | `npm run lint` | ESLint 检查 |
 | `npm run format` | Prettier 格式化 |
 
+## 功能特性
+
+### 聊天与模型
+
+- 多会话、本地持久化、首条消息自动生成标题
+- 流式输出、思考过程（`reasoning_content`）、联网搜索来源展示
+- Token 用量 footer + 悬停明细（输入/输出细分，含图片 Token、思考 Token、缓存命中等，DashScope 流式 `usage`）
+- 发送中 Enter 不重复发送；发送钮在流式时变为停止
+- 消息图片加载失败时显示占位，点击可查看失败详情（URL、对象键等）
+
+### 多模态与对象存储（0.3.0）
+
+- 聊天可附加图片（选择 / 粘贴 / 拖拽），上传至 **S3 兼容存储**（MinIO、AWS S3 等），消息 JSON 只存元数据与 URL
+- **设置 → 模型服务**：每个已启用模型可单独开关「支持图片输入」
+- **设置 → 对象存储**：Endpoint、Region、Bucket、AK/SK（加密落盘）、Path-style、对外访问地址、预签名 URL、对象键前缀；支持测试连接
+- **未配置对象存储时仍可使用纯文字聊天**；仅在尝试添加/发送图片时提示先去配置 S3
+- **未配置模型服务时**聊天页半透明遮罩，可一键跳转对应设置项
+- 删除会话时按 `{keyPrefix}/{conversationId}/` 清理桶内附件，并兜底删除消息里记录的对象键
+
+### DashScope 请求策略
+
+- 历史消息含有效图片 URL 时走 `multimodal-generation`；`qwen3.7-plus`、`qwen3.6-plus`、`qwen3.5-plus`、`qwen3-vl` 等型号即使纯文本也走多模态端点（避免百炼 `url error`）
+- 图片 URL 须公网可访问（不可为 localhost / 内网）；可在「对外访问地址」或预签名 URL 中配置
+- 当前模型**未开启图片**时，发往 API 的上下文会自动去掉 `image_url`，仅保留文字（纯图历史消息以 `[图片]` 占位）
+
+### 设置页
+
+- 左侧目录：**模型服务** / **对象存储** / **聊天偏好**（主题、深度思考、联网搜索）
+- 不使用 `.env` 注入配置，全部在 UI 保存至本机
+
 ## 配置与运行机制
 
 - Provider 模式：
-  - `dashscope`：聊天走 DashScope 原生 HTTP Generation；模型同步走兼容接口
+  - `dashscope`：聊天走 DashScope 原生 HTTP（文本 `text-generation` 或多模态 `multimodal-generation`）；模型列表走兼容接口
   - `openai-compatible`：统一走 OpenAI 兼容接口
-- 设置数据存储在本地用户目录（`userData/caibao/`），包含模型列表、已启用模型和 API 配置。
-- 聊天会话与消息持久化在本地；支持流式输出、思考过程、联网搜索结果、Token 用量。
+- 设置与凭证存储在 `userData/caibao/settings.json`（API Key、对象存储 AK/SK 加密）；会话在 `userData/caibao/conversations/`。
+- 对象存储表单项**无预填默认值**（Endpoint / Bucket / Region 等需自行填写）；运行时若对象键前缀为空，上传路径仍默认使用 `attachments`。
+
+手动测试见 [TESTING.md](./TESTING.md)。
 
 ## Markdown 渲染能力
 

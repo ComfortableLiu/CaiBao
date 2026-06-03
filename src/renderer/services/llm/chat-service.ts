@@ -1,7 +1,8 @@
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { buildModelChatParams } from '@shared/model-chat-params';
 import type { ResolvedProviderConfig } from '@shared/provider-config';
-import type { SearchResultItem, TokenUsage } from '@shared/types';
+import { stripImagePartsFromChatHistory } from '@shared/multimodal-content';
+import type { Message, SearchResultItem, TokenUsage } from '@shared/types';
 import { createLlmClient } from './createLlmClient';
 import { generateTitleDashScope, streamDashScopeGeneration } from './dashscope-http';
 import { extractSearchResultsFromChunk } from './stream-parser';
@@ -38,20 +39,30 @@ export async function streamChatCompletion(
   params: {
     model: string;
     messages: ChatCompletionMessageParam[];
+    sourceMessages?: Message[];
+    modelVisionEnabled?: boolean;
     enableThinking?: boolean;
     enableSearch?: boolean;
     signal?: AbortSignal;
   },
   callbacks: StreamCallbacks,
 ): Promise<void> {
+  const visionEnabled = params.modelVisionEnabled !== false;
+  const apiMessages = visionEnabled
+    ? params.messages
+    : stripImagePartsFromChatHistory(params.messages);
+
   if (provider.transport === 'dashscope-http') {
     try {
       await streamDashScopeGeneration(
         {
           generationUrl: provider.generationUrl,
+          multimodalGenerationUrl: provider.multimodalGenerationUrl,
           apiKey: provider.apiKey,
           model: params.model,
-          messages: params.messages,
+          messages: apiMessages,
+          sourceMessages: params.sourceMessages,
+          modelVisionEnabled: visionEnabled,
           enableThinking: params.enableThinking,
           enableSearch: params.enableSearch,
           signal: params.signal,
@@ -77,7 +88,7 @@ export async function streamChatCompletion(
 
     const requestBody: Record<string, unknown> = {
       model: params.model,
-      messages: params.messages,
+      messages: apiMessages,
       stream: true,
       stream_options: { include_usage: true },
       ...buildModelChatParams({

@@ -1,15 +1,25 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type {
   Conversation,
   ConversationMeta,
   Message,
+  MessageAttachment,
   SearchResultItem,
   TokenUsage,
 } from '@shared/types';
 import { getActiveProfile, resolveProviderConfig } from '@shared/provider-config';
+import {
+  assertRemoteAccessibleImageUrl,
+  DASHSCOPE_IMAGE_URL_HINT,
+} from '@shared/image-url-validation';
+import { getModelVisionEnabled } from '@shared/model-vision-config';
+import { getObjectStorageUploadBlockReason } from '@shared/settings-readiness';
 import { getApi } from '../services/api';
 import { fallbackTitle, generateTitle, streamChatCompletion } from '../services/llm/chat-service';
+import { buildChatHistory } from '../utils/build-chat-history';
+import { readFileAsBase64 } from '../utils/attachments';
 import { useSettingsStore } from './settings-store';
 
 interface ChatState {
@@ -29,20 +39,20 @@ interface ChatState {
   openNewChat: () => void;
   deleteConversation: (id: string) => Promise<void>;
   setSelectedModel: (modelId: string) => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, imageFiles?: File[]) => Promise<void>;
   retryAssistantMessage: (assistantId: string) => Promise<void>;
   abortStream: () => void;
   setCopyToast: (msg: string | null) => void;
 }
-
-type ChatHistoryItem = { role: 'user' | 'assistant'; content: string };
 
 interface StartAssistantStreamParams {
   conversationId: string;
   assistantId: string;
   assistantTemplate: Message;
   model: string;
-  history: ChatHistoryItem[];
+  history: ChatCompletionMessageParam[];
+  /** 组装 history 所用的会话消息（含图片附件元数据） */
+  sourceMessages: Message[];
   startedAsDraft: boolean;
   isFirstMessage: boolean;
   titleUserContent?: string;
@@ -101,15 +111,6 @@ function patchInFlightConversation(conversationId: string, updater: (conv: Conve
   inFlightConversations.set(conversationId, updater(current));
 }
 
-function messagesToHistory(messages: Message[], excludeAssistantId: string): ChatHistoryItem[] {
-  return messages
-    .filter((m) => m.id !== excludeAssistantId)
-    .map((m) => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.error ? '' : m.content,
-    }));
-}
-
 function startAssistantStream(params: StartAssistantStreamParams): void {
   const {
     conversationId,
@@ -117,6 +118,7 @@ function startAssistantStream(params: StartAssistantStreamParams): void {
     assistantTemplate,
     model,
     history,
+    sourceMessages,
     startedAsDraft,
     isFirstMessage,
     titleUserContent,
@@ -172,6 +174,7 @@ function startAssistantStream(params: StartAssistantStreamParams): void {
 
   const enableThinking = settings.enableThinking;
   const enableSearch = settings.enableSearch;
+  const modelVisionEnabled = getModelVisionEnabled(model, settings);
 
   syncActiveStreamingUi(set, get);
 
@@ -180,6 +183,8 @@ function startAssistantStream(params: StartAssistantStreamParams): void {
     {
       model,
       messages: history,
+      sourceMessages,
+      modelVisionEnabled,
       enableThinking,
       enableSearch,
       signal: controller.signal,
@@ -407,7 +412,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setCopyToast: (msg) => set({ copyToast: msg }),
 
-  sendMessage: async (content) => {
+  sendMessage: async (content, imageFiles = []) => {
+    try {
     const settings = useSettingsStore.getState();
     const provider = resolveProviderConfig(settings);
     const profile = getActiveProfile(settings);
@@ -426,11 +432,75 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     const conversationId = activeConversation.id;
     const startedAsDraft = isDraft;
+
+    if (imageFiles.length > 0) {
+      const storageReason = getObjectStorageUploadBlockReason(settings);
+      if (storageReason) {
+        get().setCopyToast(storageReason);
+        setTimeout(() => get().setCopyToast(null), 3000);
+        return;
+      }
+    }
+
+    const attachments: MessageAttachment[] = [];
+    const uploadedKeys: string[] = [];
+
+    try {
+      for (const file of imageFiles) {
+        const attachmentId = uuidv4();
+        const dataBase64 = await readFileAsBase64(file);
+        const uploaded = await getApi().objectStorage.upload({
+          conversationId,
+          attachmentId,
+          mimeType: file.type,
+          fileName: file.name,
+          dataBase64,
+        });
+        uploadedKeys.push(uploaded.objectKey);
+        attachments.push({
+          id: uploaded.id,
+          mimeType: uploaded.mimeType,
+          fileName: uploaded.fileName,
+          objectKey: uploaded.objectKey,
+          url: uploaded.url,
+        });
+      }
+
+      const invalid = attachments.filter((a) => {
+        try {
+          assertRemoteAccessibleImageUrl(a.url);
+          return false;
+        } catch {
+          return true;
+        }
+      });
+      if (invalid.length > 0) {
+        try {
+          await getApi().objectStorage.deleteKeys(uploadedKeys);
+        } catch {
+          /* best-effort rollback */
+        }
+        get().setCopyToast(DASHSCOPE_IMAGE_URL_HINT);
+        setTimeout(() => get().setCopyToast(null), 5000);
+        return;
+      }
+    } catch (err) {
+      if (uploadedKeys.length > 0) {
+        try {
+          await getApi().objectStorage.deleteKeys(uploadedKeys);
+        } catch {
+          /* best-effort rollback */
+        }
+      }
+      throw err;
+    }
+
     const userMsg: Message = {
       id: uuidv4(),
       conversationId,
       role: 'user',
       content,
+      attachments: attachments.length > 0 ? attachments : undefined,
       createdAt: new Date().toISOString(),
     };
 
@@ -462,7 +532,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     inFlightConversations.set(conversationId, conv);
     set({ activeConversation: conv });
 
-    const history = messagesToHistory(conv.messages, assistantId);
+    const sourceMessages = conv.messages.filter((m) => m.id !== assistantId);
+    const history = await buildChatHistory(conv.messages, assistantId, {
+      settings,
+      modelId: model,
+    });
 
     startAssistantStream({
       conversationId,
@@ -470,12 +544,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
       assistantTemplate: assistantDraft,
       model,
       history,
+      sourceMessages,
       startedAsDraft,
       isFirstMessage,
-      titleUserContent: content,
+      titleUserContent: content.trim() || (attachments.length > 0 ? '[图片]' : content),
       get,
       set,
     });
+    } catch (err) {
+      get().setCopyToast(err instanceof Error ? err.message : '发送失败');
+      setTimeout(() => get().setCopyToast(null), 3000);
+    }
   },
 
   retryAssistantMessage: async (assistantId) => {
@@ -528,7 +607,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     inFlightConversations.set(conversationId, conv);
     set({ activeConversation: conv });
 
-    const history = messagesToHistory(conv.messages.slice(0, assistantIndex), assistantId);
+    const sourceMessages = conv.messages.slice(0, assistantIndex);
+    const history = await buildChatHistory(conv.messages.slice(0, assistantIndex), assistantId, {
+      settings,
+      modelId: model,
+    });
 
     startAssistantStream({
       conversationId,
@@ -536,6 +619,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       assistantTemplate: resetAssistant,
       model,
       history,
+      sourceMessages,
       startedAsDraft: isDraft,
       isFirstMessage: false,
       get,

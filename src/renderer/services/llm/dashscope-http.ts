@@ -1,23 +1,19 @@
 import { buildDashScopeGenerationParameters } from '@shared/dashscope-generation-params';
+import { requiresDashScopeMultimodalEndpoint } from '@shared/model-capabilities';
+import { stripImagePartsFromChatHistory } from '@shared/multimodal-content';
+import { toDashScopeMultimodalMessages } from '@shared/dashscope-multimodal';
+import { shouldUseMultimodalApi } from '@shared/multimodal-history';
+import type { Message } from '@shared/types';
+import {
+  extractDashScopeStreamDelta,
+  extractDashScopeStreamText,
+  getDashScopeChoicePayload,
+} from '@shared/dashscope-stream-content';
+import { normalizeDashScopeUsage, type DashScopeUsageRaw } from '@shared/token-usage';
 import type { TokenUsage } from '@shared/types';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import type { StreamCallbacks, StreamDelta } from './chat-service';
 import { extractSearchResultsFromChunk } from './stream-parser';
-
-interface DashScopeUsage {
-  input_tokens?: number;
-  output_tokens?: number;
-  total_tokens?: number;
-}
-
-function normalizeDashScopeUsage(raw: DashScopeUsage | undefined): TokenUsage | undefined {
-  if (!raw) return undefined;
-  if (raw.total_tokens == null && raw.input_tokens == null) return undefined;
-  const prompt = raw.input_tokens ?? 0;
-  const completion = raw.output_tokens ?? 0;
-  const total = raw.total_tokens ?? prompt + completion;
-  return { prompt, completion, total };
-}
 
 async function readHttpErrorMessage(response: Response): Promise<string> {
   const text = await response.text();
@@ -45,7 +41,7 @@ function assertDashScopeEnvelope(chunk: Record<string, unknown>): void {
 function deltaFromDashScopeChunk(chunk: Record<string, unknown>): StreamDelta {
   const delta: StreamDelta = {};
 
-  const usage = normalizeDashScopeUsage(chunk.usage as DashScopeUsage | undefined);
+  const usage = normalizeDashScopeUsage(chunk.usage as DashScopeUsageRaw | undefined);
   if (usage) delta.usage = usage;
 
   const searchResults = extractSearchResultsFromChunk(chunk);
@@ -54,20 +50,9 @@ function deltaFromDashScopeChunk(chunk: Record<string, unknown>): StreamDelta {
     delta.searchStatus = 'done';
   }
 
-  const output = chunk.output as Record<string, unknown> | undefined;
-  const choices = output?.choices as unknown[] | undefined;
-  const first = choices?.[0] as Record<string, unknown> | undefined;
-  const message = first?.message as Record<string, unknown> | undefined;
-  if (message) {
-    const content = message.content;
-    const reasoning = message.reasoning_content;
-    if (typeof content === 'string' && content.length > 0) {
-      delta.content = content;
-    }
-    if (typeof reasoning === 'string' && reasoning.length > 0) {
-      delta.reasoning = reasoning;
-    }
-  }
+  const stream = extractDashScopeStreamDelta(chunk);
+  if (stream.content) delta.content = stream.content;
+  if (stream.reasoning) delta.reasoning = stream.reasoning;
 
   return delta;
 }
@@ -133,34 +118,57 @@ async function* parseDashScopeSseJson(
 export async function streamDashScopeGeneration(
   params: {
     generationUrl: string;
+    multimodalGenerationUrl: string;
     apiKey: string;
     model: string;
     messages: ChatCompletionMessageParam[];
+    /** 参与组 history 的原始会话消息（用于检测历史图片附件） */
+    sourceMessages?: Message[];
+    /** 当前模型是否向 API 发送图片（与设置里「支持图片输入」一致） */
+    modelVisionEnabled?: boolean;
     enableThinking?: boolean;
     enableSearch?: boolean;
     signal?: AbortSignal;
   },
   callbacks: StreamCallbacks,
 ): Promise<void> {
+  const visionEnabled = params.modelVisionEnabled !== false;
+  const apiMessages = visionEnabled
+    ? params.messages
+    : stripImagePartsFromChatHistory(params.messages);
+
+  const hasImages = shouldUseMultimodalApi(params.sourceMessages ?? [], apiMessages);
+  const useMultimodalEndpoint =
+    hasImages || requiresDashScopeMultimodalEndpoint(params.model);
+  const requestUrl = useMultimodalEndpoint
+    ? params.multimodalGenerationUrl
+    : params.generationUrl;
+
   const enableThinking = params.enableThinking ?? true;
   const enableSearch = params.enableSearch ?? true;
 
+  const inputMessages = useMultimodalEndpoint
+    ? toDashScopeMultimodalMessages(apiMessages)
+    : apiMessages;
+
+  const parameters = buildDashScopeGenerationParameters({
+    model: params.model,
+    enableThinking,
+    enableSearch,
+  });
+
   const body = {
     model: params.model,
-    input: { messages: params.messages },
-    parameters: buildDashScopeGenerationParameters({
-      model: params.model,
-      enableThinking,
-      enableSearch,
-    }),
+    input: { messages: inputMessages },
+    parameters,
   };
 
   callbacks.onStart?.();
-  if (enableSearch) {
+  if (enableSearch && parameters.enable_search) {
     callbacks.onDelta({ searchStatus: 'searching' });
   }
 
-  const response = await fetch(params.generationUrl, {
+  const response = await fetch(requestUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${params.apiKey}`,
@@ -229,8 +237,7 @@ export async function generateTitleDashScope(
 
   const output = json.output as Record<string, unknown> | undefined;
   const choices = output?.choices as unknown[] | undefined;
-  const first = choices?.[0] as Record<string, unknown> | undefined;
-  const message = first?.message as Record<string, unknown> | undefined;
-  const text = typeof message?.content === 'string' ? message.content.trim() : '';
+  const payload = getDashScopeChoicePayload(choices?.[0] as Record<string, unknown> | undefined);
+  const text = extractDashScopeStreamText(payload?.content)?.trim() ?? '';
   return text;
 }

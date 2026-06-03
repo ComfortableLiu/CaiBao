@@ -11,7 +11,8 @@ export default defineConfig({
   devtool: isProduction ? false : 'source-map',
   output: {
     path: path.join(rootDir, 'dist/renderer'),
-    filename: 'index.js',
+    filename: isProduction ? '[name].js' : 'index.js',
+    chunkFilename: isProduction ? 'chunks/[name].js' : '[name].js',
     clean: true,
   },
   module: {
@@ -24,6 +25,26 @@ export default defineConfig({
     ],
   },
   resolve: sharedResolve(),
+  optimization: isProduction
+    ? {
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            markdown: {
+              test: /[\\/]node_modules[\\/](react-markdown|remark-|rehype-|unified|micromark|katex|highlight\.js)/,
+              name: 'markdown',
+              chunks: 'all',
+            },
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendor',
+              chunks: 'all',
+            },
+          },
+        },
+      }
+    : undefined,
+  experiments: isProduction ? undefined : { lazyCompilation: true },
   plugins: [
     new HtmlRspackPlugin({
       template: path.join(rootDir, 'src/renderer/index.html'),
@@ -33,6 +54,10 @@ export default defineConfig({
   devServer: {
     port: 5173,
     hot: true,
+    compress: false,
     historyApiFallback: true,
+    client: {
+      overlay: true,
+    },
   },
 });

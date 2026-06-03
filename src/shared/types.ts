@@ -1,7 +1,18 @@
+export interface TokenUsageBreakdown {
+  textTokens?: number;
+  imageTokens?: number;
+  reasoningTokens?: number;
+  cachedTokens?: number;
+}
+
 export interface TokenUsage {
   prompt: number;
   completion: number;
   total: number;
+  /** 输入侧细分（DashScope input_tokens_details 等） */
+  input?: TokenUsageBreakdown;
+  /** 输出侧细分（DashScope output_tokens_details 等） */
+  output?: TokenUsageBreakdown;
 }
 
 export interface SearchResultItem {
@@ -12,11 +23,22 @@ export interface SearchResultItem {
   icon?: string;
 }
 
+export interface MessageAttachment {
+  id: string;
+  mimeType: string;
+  objectKey: string;
+  url: string;
+  fileName?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
   role: 'user' | 'assistant';
   content: string;
+  attachments?: MessageAttachment[];
   reasoning?: string;
   searchResults?: SearchResultItem[];
   searchStatus?: 'searching' | 'done';
@@ -59,6 +81,8 @@ export interface ProviderProfile {
   apiKey: string;
   availableModels: string[];
   enabledModelIds: string[];
+  /** 已启用模型是否支持图片输入（在设置中编辑） */
+  modelVisionById: Record<string, boolean>;
 }
 
 export interface DashScopeProfile extends ProviderProfile {
@@ -69,10 +93,39 @@ export interface OpenAICompatibleProfile extends ProviderProfile {
   baseURL: string;
 }
 
+export interface ObjectStorageSettings {
+  enabled: boolean;
+  endpoint: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  forcePathStyle: boolean;
+  publicBaseUrl: string;
+  keyPrefix: string;
+  usePresignedUrls: boolean;
+  presignedUrlExpirySeconds: number;
+}
+
+export interface ObjectStorageSettingsPersisted {
+  enabled: boolean;
+  endpoint: string;
+  region: string;
+  bucket: string;
+  encryptedAccessKeyId: string | null;
+  encryptedSecretAccessKey: string | null;
+  forcePathStyle: boolean;
+  publicBaseUrl: string;
+  keyPrefix: string;
+  usePresignedUrls: boolean;
+  presignedUrlExpirySeconds: number;
+}
+
 export interface AppSettings {
   providerMode: ProviderMode;
   dashscope: DashScopeProfile;
   openaiCompatible: OpenAICompatibleProfile;
+  objectStorage: ObjectStorageSettings;
   theme: ThemeMode;
   /** 是否开启深度思考（enable_thinking） */
   enableThinking: boolean;
@@ -84,12 +137,14 @@ export interface ProviderProfilePersisted {
   encryptedApiKey: string | null;
   availableModels: string[];
   enabledModelIds: string[];
+  modelVisionById?: Record<string, boolean>;
 }
 
 export interface SettingsPersisted {
   providerMode: ProviderMode;
   dashscope: ProviderProfilePersisted & { region: DashScopeRegion };
   openaiCompatible: ProviderProfilePersisted & { baseURL: string };
+  objectStorage: ObjectStorageSettingsPersisted;
   theme?: ThemeMode;
   enableThinking?: boolean;
   enableSearch?: boolean;
@@ -115,6 +170,7 @@ export interface DashScopeProfileSaveInput {
   apiKey?: string;
   availableModels?: string[];
   enabledModelIds?: string[];
+  modelVisionById?: Record<string, boolean>;
 }
 
 export interface OpenAICompatibleProfileSaveInput {
@@ -122,12 +178,54 @@ export interface OpenAICompatibleProfileSaveInput {
   apiKey?: string;
   availableModels?: string[];
   enabledModelIds?: string[];
+  modelVisionById?: Record<string, boolean>;
+}
+
+export interface ObjectStorageSaveInput {
+  enabled?: boolean;
+  endpoint?: string;
+  region?: string;
+  bucket?: string;
+  accessKeyId?: string;
+  /** 非空时更新；留空表示保留已保存的 Secret */
+  secretAccessKey?: string;
+  forcePathStyle?: boolean;
+  publicBaseUrl?: string;
+  keyPrefix?: string;
+  usePresignedUrls?: boolean;
+  presignedUrlExpirySeconds?: number;
+}
+
+export interface AttachmentUploadInput {
+  conversationId: string;
+  attachmentId: string;
+  mimeType: string;
+  fileName?: string;
+  dataBase64: string;
+}
+
+export interface AttachmentUploadResult {
+  id: string;
+  mimeType: string;
+  fileName?: string;
+  objectKey: string;
+  url: string;
+}
+
+export interface ObjectStorageTestInput {
+  endpoint: string;
+  region: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey?: string;
+  forcePathStyle: boolean;
 }
 
 export interface SettingsSaveInput {
   providerMode?: ProviderMode;
   dashscope?: DashScopeProfileSaveInput;
   openaiCompatible?: OpenAICompatibleProfileSaveInput;
+  objectStorage?: ObjectStorageSaveInput;
   theme?: ThemeMode;
   enableThinking?: boolean;
   enableSearch?: boolean;

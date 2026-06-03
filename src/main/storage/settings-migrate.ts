@@ -3,6 +3,7 @@ import {
   findDashScopeRegionByBaseUrl,
   normalizeBaseUrl,
 } from '@shared/provider-config';
+import { backfillModelVisionById } from '@shared/model-vision-config';
 import type {
   DashScopeRegion,
   LegacySettingsPersisted,
@@ -16,6 +17,23 @@ function emptyProfile() {
     encryptedApiKey: null as string | null,
     availableModels: [] as string[],
     enabledModelIds: [] as string[],
+    modelVisionById: {} as Record<string, boolean>,
+  };
+}
+
+export function createDefaultObjectStoragePersisted() {
+  return {
+    enabled: false,
+    endpoint: '',
+    region: '',
+    bucket: '',
+    encryptedAccessKeyId: null as string | null,
+    encryptedSecretAccessKey: null as string | null,
+    forcePathStyle: true,
+    publicBaseUrl: '',
+    keyPrefix: '',
+    usePresignedUrls: false,
+    presignedUrlExpirySeconds: 86400,
   };
 }
 
@@ -30,6 +48,7 @@ export function createDefaultSettingsPersisted(): SettingsPersisted {
       baseURL: 'https://api.openai.com/v1',
       ...emptyProfile(),
     },
+    objectStorage: createDefaultObjectStoragePersisted(),
     theme: 'system',
     enableThinking: true,
     enableSearch: true,
@@ -51,6 +70,8 @@ export function migrateLegacySettings(legacy: LegacySettingsPersisted): Settings
     enabledModelIds: legacy.enabledModelIds ?? [],
   };
 
+  const objectStorage = createDefaultObjectStoragePersisted();
+
   if (region) {
     return {
       providerMode: 'dashscope',
@@ -59,6 +80,7 @@ export function migrateLegacySettings(legacy: LegacySettingsPersisted): Settings
         baseURL: 'https://api.openai.com/v1',
         ...emptyProfile(),
       },
+      objectStorage,
       theme: legacy.theme ?? 'system',
       enableThinking: legacy.enableThinking ?? true,
       enableSearch: legacy.enableSearch ?? true,
@@ -75,6 +97,7 @@ export function migrateLegacySettings(legacy: LegacySettingsPersisted): Settings
       baseURL,
       ...shared,
     },
+    objectStorage,
     theme: legacy.theme ?? 'system',
     enableThinking: legacy.enableThinking ?? true,
     enableSearch: legacy.enableSearch ?? true,
@@ -93,13 +116,22 @@ export function normalizeSettingsPersisted(raw: unknown): SettingsPersisted {
   const providerMode = input.providerMode ?? defaults.providerMode;
   const region = input.dashscope?.region ?? defaults.dashscope.region;
 
+  const dashscopeEnabled =
+    input.dashscope?.enabledModelIds ?? defaults.dashscope.enabledModelIds;
+  const openaiEnabled =
+    input.openaiCompatible?.enabledModelIds ?? defaults.openaiCompatible.enabledModelIds;
+
   return {
     providerMode,
     dashscope: {
       region,
       encryptedApiKey: input.dashscope?.encryptedApiKey ?? defaults.dashscope.encryptedApiKey,
       availableModels: input.dashscope?.availableModels ?? defaults.dashscope.availableModels,
-      enabledModelIds: input.dashscope?.enabledModelIds ?? defaults.dashscope.enabledModelIds,
+      enabledModelIds: dashscopeEnabled,
+      modelVisionById: backfillModelVisionById(
+        dashscopeEnabled,
+        input.dashscope?.modelVisionById ?? defaults.dashscope.modelVisionById,
+      ),
     },
     openaiCompatible: {
       baseURL: normalizeBaseUrl(
@@ -109,8 +141,31 @@ export function normalizeSettingsPersisted(raw: unknown): SettingsPersisted {
         input.openaiCompatible?.encryptedApiKey ?? defaults.openaiCompatible.encryptedApiKey,
       availableModels:
         input.openaiCompatible?.availableModels ?? defaults.openaiCompatible.availableModels,
-      enabledModelIds:
-        input.openaiCompatible?.enabledModelIds ?? defaults.openaiCompatible.enabledModelIds,
+      enabledModelIds: openaiEnabled,
+      modelVisionById: backfillModelVisionById(
+        openaiEnabled,
+        input.openaiCompatible?.modelVisionById ?? defaults.openaiCompatible.modelVisionById,
+      ),
+    },
+    objectStorage: {
+      enabled: input.objectStorage?.enabled ?? defaults.objectStorage.enabled,
+      endpoint: input.objectStorage?.endpoint ?? defaults.objectStorage.endpoint,
+      region: input.objectStorage?.region ?? defaults.objectStorage.region,
+      bucket: input.objectStorage?.bucket ?? defaults.objectStorage.bucket,
+      encryptedAccessKeyId:
+        input.objectStorage?.encryptedAccessKeyId ?? defaults.objectStorage.encryptedAccessKeyId,
+      encryptedSecretAccessKey:
+        input.objectStorage?.encryptedSecretAccessKey ??
+        defaults.objectStorage.encryptedSecretAccessKey,
+      forcePathStyle:
+        input.objectStorage?.forcePathStyle ?? defaults.objectStorage.forcePathStyle,
+      publicBaseUrl: input.objectStorage?.publicBaseUrl ?? defaults.objectStorage.publicBaseUrl,
+      keyPrefix: input.objectStorage?.keyPrefix ?? defaults.objectStorage.keyPrefix,
+      usePresignedUrls:
+        input.objectStorage?.usePresignedUrls ?? defaults.objectStorage.usePresignedUrls,
+      presignedUrlExpirySeconds:
+        input.objectStorage?.presignedUrlExpirySeconds ??
+        defaults.objectStorage.presignedUrlExpirySeconds,
     },
     theme: input.theme ?? defaults.theme,
     enableThinking: input.enableThinking ?? defaults.enableThinking,

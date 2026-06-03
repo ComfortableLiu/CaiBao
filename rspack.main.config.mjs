@@ -14,8 +14,14 @@ export default defineConfig({
   },
   module: { rules: [sharedSwcRule()] },
   resolve: sharedResolve(),
-  externals: {
-    electron: 'commonjs electron',
-  },
+  externals: [
+    ({ request }, callback) => {
+      if (!request) return callback();
+      if (request.startsWith('.') || request.startsWith('/')) return callback();
+      if (request.startsWith('@shared/') || request.startsWith('@/')) return callback();
+      // 必须用 commonjs2，否则会变成 module.exports = electron（运行时未定义）
+      callback(null, `commonjs2 ${request}`);
+    },
+  ],
   node: { __dirname: false, __filename: false },
 });

@@ -10,6 +10,13 @@ export interface ModelCapabilities {
   thinking: boolean;
   /** 是否支持 enable_search（Chat Completions） */
   webSearch: boolean;
+  /** 是否支持图片输入 */
+  vision: boolean;
+  /**
+   * DashScope 是否必须走 multimodal-generation（纯文本也要）。
+   * 如 qwen3.7-plus 走 text-generation 会报 url error。
+   */
+  dashscopeMultimodalEndpoint?: boolean;
   /** 开启深度思考且联网时使用的 search_strategy */
   searchStrategyWhenThinking?: SearchStrategy;
   /** agent / agent_max 策略下启用返回搜索来源 */
@@ -26,6 +33,7 @@ export interface ModelCapabilityRule {
 export const DEFAULT_MODEL_CAPABILITIES: ModelCapabilities = {
   thinking: false,
   webSearch: false,
+  vision: false,
 };
 
 /**
@@ -33,6 +41,24 @@ export const DEFAULT_MODEL_CAPABILITIES: ModelCapabilities = {
  * 快照版本模型（如 qwen3-max-2025-09-23）需先于通用 qwen3-max 规则。
  */
 export const MODEL_CAPABILITY_RULES: ModelCapabilityRule[] = [
+  // —— 视觉语言模型 ——
+  {
+    pattern: /^qwen3-vl/i,
+    capabilities: {
+      thinking: true,
+      webSearch: false,
+      vision: true,
+      dashscopeMultimodalEndpoint: true,
+    },
+  },
+  {
+    pattern: /^qwen2\.5-vl|^qwen2-vl|^qwen-vl|^qvq/i,
+    capabilities: { thinking: true, webSearch: false, vision: true },
+  },
+  {
+    pattern: /^gpt-4o|^gpt-4-turbo|^gpt-4-vision/i,
+    capabilities: { thinking: false, webSearch: false, vision: true },
+  },
   // —— 需 agent 策略的型号 ——
   {
     pattern: /^qwen3-max-2025-09-23/i,
@@ -79,7 +105,7 @@ export const MODEL_CAPABILITY_RULES: ModelCapabilityRule[] = [
       searchEnableSource: true,
     },
   },
-  // —— Qwen3.7 / 3.6（部分能力仅 Responses API；Chat 仍走 enable_search）——
+  // —— Qwen3.7 / 3.6（plus 系走 multimodal-generation；max 走 text-generation）——
   {
     pattern: /^qwen3\.7-max/i,
     capabilities: {
@@ -89,7 +115,35 @@ export const MODEL_CAPABILITY_RULES: ModelCapabilityRule[] = [
     },
   },
   {
-    pattern: /^qwen3\.6-(?:max|plus|flash)/i,
+    pattern: /^qwen3\.7-plus/i,
+    capabilities: {
+      thinking: true,
+      webSearch: true,
+      vision: true,
+      dashscopeMultimodalEndpoint: true,
+      searchStrategyWhenThinking: 'turbo',
+    },
+  },
+  {
+    pattern: /^qwen3\.6-max/i,
+    capabilities: {
+      thinking: true,
+      webSearch: true,
+      searchStrategyWhenThinking: 'max',
+    },
+  },
+  {
+    pattern: /^qwen3\.6-plus/i,
+    capabilities: {
+      thinking: true,
+      webSearch: true,
+      vision: true,
+      dashscopeMultimodalEndpoint: true,
+      searchStrategyWhenThinking: 'max',
+    },
+  },
+  {
+    pattern: /^qwen3\.6-flash/i,
     capabilities: {
       thinking: true,
       webSearch: true,
@@ -98,7 +152,17 @@ export const MODEL_CAPABILITY_RULES: ModelCapabilityRule[] = [
   },
   // —— Qwen3.5 系列 ——
   {
-    pattern: /^qwen3\.5-(?:plus|flash)/i,
+    pattern: /^qwen3\.5-plus/i,
+    capabilities: {
+      thinking: true,
+      webSearch: true,
+      vision: true,
+      dashscopeMultimodalEndpoint: true,
+      searchStrategyWhenThinking: 'turbo',
+    },
+  },
+  {
+    pattern: /^qwen3\.5-flash/i,
     capabilities: {
       thinking: true,
       webSearch: true,
@@ -171,11 +235,15 @@ export function normalizeModelId(modelId: string): string {
   return modelId.trim().toLowerCase();
 }
 
+export function requiresDashScopeMultimodalEndpoint(modelId: string): boolean {
+  return Boolean(resolveModelCapabilities(modelId).dashscopeMultimodalEndpoint);
+}
+
 export function resolveModelCapabilities(modelId: string): ModelCapabilities {
   const id = normalizeModelId(modelId);
   for (const rule of MODEL_CAPABILITY_RULES) {
     if (rule.pattern.test(id)) {
-      return rule.capabilities;
+      return { ...DEFAULT_MODEL_CAPABILITIES, ...rule.capabilities };
     }
   }
   return DEFAULT_MODEL_CAPABILITIES;

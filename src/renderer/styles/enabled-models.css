@@ -93,3 +93,29 @@
   color: var(--danger);
   background: rgba(232, 93, 93, 0.12);
 }
+
+.chip-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.chip-edit:hover {
+  color: var(--accent);
+  background: rgba(108, 140, 255, 0.12);
+}
+
+.chip-vision-badge {
+  margin-right: 4px;
+  font-size: 11px;
+}
+
+.enabled-model-chip.vision-on {
+  border-color: rgba(108, 140, 255, 0.35);
+}

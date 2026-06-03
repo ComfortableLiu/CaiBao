@@ -1,19 +1,19 @@
 {
   "name": "caibao",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "菜包 - 桌面 AI 聊天客户端（OpenAI 兼容）",
   "main": "dist/main/index.js",
   "author": "",
   "license": "MIT",
   "scripts": {
     "dev:renderer": "rspack serve -c rspack.renderer.config.mjs",
-    "dev:main": "rspack build -c rspack.main.config.mjs --watch",
+    "dev:main": "cross-env NODE_ENV=development rspack build -c rspack.main.config.mjs --watch",
     "dev:preload": "rspack build -c rspack.preload.config.mjs --watch",
     "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:preload\" \"npm:dev:electron\"",
-    "build:main": "rspack build -c rspack.main.config.mjs --mode production",
-    "build:preload": "rspack build -c rspack.preload.config.mjs --mode production",
-    "build:renderer": "rspack build -c rspack.renderer.config.mjs --mode production",
+    "build:main": "cross-env NODE_ENV=production rspack build -c rspack.main.config.mjs --mode production",
+    "build:preload": "cross-env NODE_ENV=production rspack build -c rspack.preload.config.mjs --mode production",
+    "build:renderer": "cross-env NODE_ENV=production rspack build -c rspack.renderer.config.mjs --mode production",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac --arm64 && node scripts/sign-mac-app.cjs",
@@ -26,8 +26,11 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1059.0",
+    "@aws-sdk/s3-request-presigner": "^3.1059.0",
     "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
+    "lucide-react": "^1.17.0",
     "openai": "^4.104.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -72,6 +75,9 @@
     "files": [
       "dist/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "**/*.node"
     ],
     "mac": {
       "category": "public.app-category.productivity",

@@ -46,3 +46,4 @@ export function getWebSearchUnavailableReason(
   }
   return undefined;
 }
+

@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import type { Message } from '@shared/types';
-import { MarkdownContent } from './MarkdownContent';
+
+const MarkdownContent = lazy(() =>
+  import('./MarkdownContent').then((m) => ({ default: m.MarkdownContent })),
+);
 import { SearchResultsBlock } from './SearchResultsBlock';
 import { useChatStore } from '../stores/chat-store';
 import { formatDuration } from '../utils/format-duration';
+import { TokenUsageTooltip } from './TokenUsageTooltip';
+import { MessageAttachmentImage } from './MessageAttachmentImage';
 
 interface Props {
   message: Message;
@@ -105,10 +110,21 @@ export function MessageBubble({ message }: Props) {
             <div className="reasoning-content">{message.reasoning}</div>
           </details>
         )}
+        {message.role === 'user' && message.attachments && message.attachments.length > 0 && (
+          <div className="message-attachments">
+            {message.attachments.map((att) => (
+              <MessageAttachmentImage key={att.id} attachment={att} />
+            ))}
+          </div>
+        )}
         {message.role === 'user' ? (
-          <div className="user-message-text">{message.content}</div>
+          message.content ? (
+            <div className="user-message-text">{message.content}</div>
+          ) : null
         ) : (
-          <MarkdownContent content={message.content || '…'} />
+          <Suspense fallback={<div className="markdown-loading">渲染中…</div>}>
+            <MarkdownContent content={message.content || '…'} />
+          </Suspense>
         )}
       </div>
       {message.role === 'assistant' && message.error && (
@@ -141,22 +157,8 @@ export function MessageBubble({ message }: Props) {
         )}
         {message.role === 'assistant' && message.usage && (
           <span className="token-summary">
-            {total ?? 0} Token
-            <span className="token-tooltip" role="tooltip">
-              <span className="token-tooltip-title">Token 用量明细</span>
-              <span className="token-tooltip-row">
-                <span>输入</span>
-                <span>{message.usage.prompt}</span>
-              </span>
-              <span className="token-tooltip-row">
-                <span>输出</span>
-                <span>{message.usage.completion}</span>
-              </span>
-              <span className="token-tooltip-row token-tooltip-total">
-                <span>合计</span>
-                <span>{message.usage.total}</span>
-              </span>
-            </span>
+            {(total ?? 0).toLocaleString()} Token
+            <TokenUsageTooltip usage={message.usage} />
           </span>
         )}
         {message.aborted && <span>已中止</span>}

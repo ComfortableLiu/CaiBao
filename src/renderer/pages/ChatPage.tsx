@@ -1,14 +1,17 @@
 import { useEffect, useMemo } from 'react';
 import { getActiveProfile, resolveProviderConfig } from '@shared/provider-config';
-import { useSettingsStore, hasEnabledModel } from '../stores/settings-store';
+import { getSetupGateReason } from '@shared/settings-readiness';
+import type { SettingsSection } from '@shared/settings-section';
+import { useSettingsStore } from '../stores/settings-store';
 import { useChatStore } from '../stores/chat-store';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { MessageList } from '../components/MessageList';
 import { Composer } from '../components/Composer';
+import { SetupGateOverlay } from '../components/SetupGateOverlay';
 import '../styles/chat.css';
 
 interface Props {
-  onOpenSettings: () => void;
+  onOpenSettings: (section?: SettingsSection) => void;
 }
 
 export function ChatPage({ onOpenSettings }: Props) {
@@ -25,7 +28,7 @@ export function ChatPage({ onOpenSettings }: Props) {
   const activeProfile = useMemo(() => getActiveProfile(settings), [settings]);
   const provider = useMemo(() => resolveProviderConfig(settings), [settings]);
   const enabledModels = activeProfile.enabledModelIds;
-  const ready = hasEnabledModel();
+  const gateReason = settings.loaded ? getSetupGateReason(settings) : null;
 
   const activeConversationId = activeConversation?.id ?? '';
   const hasHistoryMessages = (activeConversation?.messages.length ?? 0) > 0;
@@ -36,30 +39,20 @@ export function ChatPage({ onOpenSettings }: Props) {
     }
   }, [enabledModels, selectedModelId, setSelectedModel]);
 
-  if (!ready) {
-    return (
-      <div className="chat-layout">
-        <div className="setup-hint">
-          <p>请先在设置中配置 API Key，并同步、勾选至少一个模型。</p>
-          <button type="button" onClick={onOpenSettings}>
-            前往设置
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="chat-layout">
       <ConversationSidebar />
       <div className="chat-main">
+        {gateReason && (
+          <SetupGateOverlay reason={gateReason} onOpenSettings={(s) => onOpenSettings(s)} />
+        )}
         <MessageList
           messages={activeConversation?.messages ?? []}
           streamingMessageId={streamingMessageId}
           scrollToBottomTrigger={hasHistoryMessages ? activeConversationId : undefined}
         />
         <Composer
-          disabled={isStreaming}
+          disabled={Boolean(gateReason)}
           provider={provider}
           models={enabledModels}
           selectedModelId={selectedModelId}
@@ -70,7 +63,7 @@ export function ChatPage({ onOpenSettings }: Props) {
           onSearchChange={(enabled) => void saveSettings({ enableSearch: enabled })}
           isStreaming={isStreaming}
           onAbort={abortStream}
-          onSend={(text) => void sendMessage(text)}
+          onSend={(text, files) => void sendMessage(text, files)}
           focusTrigger={activeConversationId}
         />
       </div>
