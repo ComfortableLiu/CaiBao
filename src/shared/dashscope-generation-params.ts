@@ -19,7 +19,7 @@ export function buildDashScopeGenerationParameters(
     incremental_output: true,
   };
 
-  if (input.enableThinking && caps.thinking) {
+  if (input.enableThinking) {
     parameters.enable_thinking = true;
   }
 
@@ -29,7 +29,7 @@ export function buildDashScopeGenerationParameters(
     const searchOptions: Record<string, unknown> = {
       search_strategy: strategy,
     };
-    if (input.enableThinking && caps.thinking) {
+    if (input.enableThinking) {
       searchOptions.forced_search = true;
     }
     if (caps.searchEnableSource || strategy === 'agent' || strategy === 'agent_max') {

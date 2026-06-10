@@ -1,6 +1,8 @@
 import type { ResolvedProviderConfig } from './provider-config';
 import { supportsDashScopeModelFeatures } from './provider-config';
 import { resolveModelCapabilities } from './model-capabilities';
+import { getModelThinkingEnabled } from './model-thinking-config';
+import type { AppSettings } from './types';
 
 export interface ModelFeatureAvailability {
   thinking: boolean;
@@ -23,13 +25,12 @@ export function getModelFeatureAvailability(
 
 export function getThinkingUnavailableReason(
   model: string,
-  provider: ResolvedProviderConfig,
+  _provider: ResolvedProviderConfig,
+  settings: AppSettings,
 ): string | undefined {
-  if (!supportsDashScopeModelFeatures(provider)) {
-    return '当前 API 端点不支持深度思考';
-  }
-  if (!resolveModelCapabilities(model).thinking) {
-    return '当前模型不支持深度思考';
+  if (!model.trim()) return '请先选择模型';
+  if (!getModelThinkingEnabled(model, settings)) {
+    return '当前模型未启用深度思考，请在设置 → 模型服务中点击编辑开启';
   }
   return undefined;
 }

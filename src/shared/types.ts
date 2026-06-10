@@ -83,6 +83,8 @@ export interface ProviderProfile {
   enabledModelIds: string[];
   /** 已启用模型是否支持图片输入（在设置中编辑） */
   modelVisionById: Record<string, boolean>;
+  /** 已启用模型是否支持深度思考（在设置中编辑） */
+  modelThinkingById: Record<string, boolean>;
 }
 
 export interface DashScopeProfile extends ProviderProfile {
@@ -138,6 +140,7 @@ export interface ProviderProfilePersisted {
   availableModels: string[];
   enabledModelIds: string[];
   modelVisionById?: Record<string, boolean>;
+  modelThinkingById?: Record<string, boolean>;
 }
 
 export interface SettingsPersisted {
@@ -171,6 +174,7 @@ export interface DashScopeProfileSaveInput {
   availableModels?: string[];
   enabledModelIds?: string[];
   modelVisionById?: Record<string, boolean>;
+  modelThinkingById?: Record<string, boolean>;
 }
 
 export interface OpenAICompatibleProfileSaveInput {
@@ -179,6 +183,7 @@ export interface OpenAICompatibleProfileSaveInput {
   availableModels?: string[];
   enabledModelIds?: string[];
   modelVisionById?: Record<string, boolean>;
+  modelThinkingById?: Record<string, boolean>;
 }
 
 export interface ObjectStorageSaveInput {

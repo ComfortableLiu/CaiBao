@@ -62,7 +62,11 @@ export function Composer({
   focusTrigger,
 }: Props) {
   const settings = useSettingsStore();
-  const thinkingUnavailableReason = getThinkingUnavailableReason(selectedModelId, provider);
+  const thinkingUnavailableReason = getThinkingUnavailableReason(
+    selectedModelId,
+    provider,
+    settings,
+  );
   const searchUnavailableReason = getWebSearchUnavailableReason(selectedModelId, provider);
   const visionUnavailableReason = getVisionUnavailableReason(selectedModelId, settings);
   const [text, setText] = useState('');

@@ -1,6 +1,6 @@
 {
   "name": "caibao",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "菜包 - 桌面 AI 聊天客户端（OpenAI 兼容）",
   "main": "dist/main/index.js",
   "author": "",

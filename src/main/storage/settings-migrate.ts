@@ -3,6 +3,7 @@ import {
   findDashScopeRegionByBaseUrl,
   normalizeBaseUrl,
 } from '@shared/provider-config';
+import { backfillModelThinkingById } from '@shared/model-thinking-config';
 import { backfillModelVisionById } from '@shared/model-vision-config';
 import type {
   DashScopeRegion,
@@ -18,6 +19,7 @@ function emptyProfile() {
     availableModels: [] as string[],
     enabledModelIds: [] as string[],
     modelVisionById: {} as Record<string, boolean>,
+    modelThinkingById: {} as Record<string, boolean>,
   };
 }
 
@@ -132,6 +134,10 @@ export function normalizeSettingsPersisted(raw: unknown): SettingsPersisted {
         dashscopeEnabled,
         input.dashscope?.modelVisionById ?? defaults.dashscope.modelVisionById,
       ),
+      modelThinkingById: backfillModelThinkingById(
+        dashscopeEnabled,
+        input.dashscope?.modelThinkingById ?? defaults.dashscope.modelThinkingById,
+      ),
     },
     openaiCompatible: {
       baseURL: normalizeBaseUrl(
@@ -145,6 +151,10 @@ export function normalizeSettingsPersisted(raw: unknown): SettingsPersisted {
       modelVisionById: backfillModelVisionById(
         openaiEnabled,
         input.openaiCompatible?.modelVisionById ?? defaults.openaiCompatible.modelVisionById,
+      ),
+      modelThinkingById: backfillModelThinkingById(
+        openaiEnabled,
+        input.openaiCompatible?.modelThinkingById ?? defaults.openaiCompatible.modelThinkingById,
       ),
     },
     objectStorage: {

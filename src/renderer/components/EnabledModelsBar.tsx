@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getModelThinkingEnabled } from '@shared/model-thinking-config';
 import { getModelVisionEnabled } from '@shared/model-vision-config';
 import type { AppSettings } from '@shared/types';
 import '../styles/enabled-models.css';
@@ -73,6 +74,7 @@ export function EnabledModelsBar({
       <ul className="enabled-models-list">
         {modelIds.map((id, index) => {
           const visionOn = getModelVisionEnabled(id, settings);
+          const thinkingOn = getModelThinkingEnabled(id, settings);
           return (
             <li
               key={id}
@@ -82,6 +84,7 @@ export function EnabledModelsBar({
                 dragIndex === index ? 'dragging' : '',
                 overIndex === index ? 'drag-over' : '',
                 visionOn ? 'vision-on' : '',
+                thinkingOn ? 'thinking-on' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -108,9 +111,10 @@ export function EnabledModelsBar({
                 className="chip-label"
                 onClick={() => onSelect?.(id)}
                 disabled={!onSelect}
-                title={visionOn ? '已启用图片' : '未启用图片'}
+                title={`${visionOn ? '已启用图片' : '未启用图片'} · ${thinkingOn ? '已启用思考' : '未启用思考'}`}
               >
                 {visionOn && <span className="chip-vision-badge" aria-hidden>🖼</span>}
+                {thinkingOn && <span className="chip-thinking-badge" aria-hidden>💭</span>}
                 {id}
               </button>
               {onEditVision && !readOnly && (

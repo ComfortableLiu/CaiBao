@@ -111,11 +111,16 @@
   background: rgba(108, 140, 255, 0.12);
 }
 
-.chip-vision-badge {
+.chip-vision-badge,
+.chip-thinking-badge {
   margin-right: 4px;
   font-size: 11px;
 }
 
 .enabled-model-chip.vision-on {
   border-color: rgba(108, 140, 255, 0.35);
+}
+
+.enabled-model-chip.thinking-on:not(.vision-on) {
+  border-color: rgba(160, 120, 255, 0.35);
 }

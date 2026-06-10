@@ -6,6 +6,10 @@ import {
   resolveProviderConfig,
 } from '@shared/provider-config';
 import {
+  backfillModelThinkingById,
+  getModelThinkingEnabled,
+} from '@shared/model-thinking-config';
+import {
   backfillModelVisionById,
   getModelVisionEnabled,
 } from '@shared/model-vision-config';
@@ -13,6 +17,17 @@ import { useSettingsStore } from '../../stores/settings-store';
 import { EnabledModelsBar } from '../EnabledModelsBar';
 import { ModelVisionEditDialog } from '../ModelVisionEditDialog';
 import { isValidBaseUrl, syncModels } from '../../services/llm/provider-service';
+
+function backfillModelCapabilityMaps(
+  enabledModelIds: string[],
+  visionById: Record<string, boolean>,
+  thinkingById: Record<string, boolean>,
+) {
+  return {
+    modelVisionById: backfillModelVisionById(enabledModelIds, visionById),
+    modelThinkingById: backfillModelThinkingById(enabledModelIds, thinkingById),
+  };
+}
 
 export function ProviderSettingsPanel() {
   const settings = useSettingsStore();
@@ -96,9 +111,10 @@ export function ProviderSettingsPanel() {
           apiKey: dashscopeApiKey,
           availableModels: models,
           enabledModelIds,
-          modelVisionById: backfillModelVisionById(
+          ...backfillModelCapabilityMaps(
             enabledModelIds,
             settings.dashscope.modelVisionById,
+            settings.dashscope.modelThinkingById,
           ),
         },
       });
@@ -159,9 +175,10 @@ export function ProviderSettingsPanel() {
           apiKey: openaiApiKey,
           availableModels: models,
           enabledModelIds,
-          modelVisionById: backfillModelVisionById(
+          ...backfillModelCapabilityMaps(
             enabledModelIds,
             settings.openaiCompatible.modelVisionById,
+            settings.openaiCompatible.modelThinkingById,
           ),
         },
       });
@@ -180,7 +197,11 @@ export function ProviderSettingsPanel() {
       await save({
         dashscope: {
           enabledModelIds: next,
-          modelVisionById: backfillModelVisionById(next, settings.dashscope.modelVisionById),
+          ...backfillModelCapabilityMaps(
+            next,
+            settings.dashscope.modelVisionById,
+            settings.dashscope.modelThinkingById,
+          ),
         },
       });
     } else {
@@ -189,9 +210,10 @@ export function ProviderSettingsPanel() {
       await save({
         openaiCompatible: {
           enabledModelIds: next,
-          modelVisionById: backfillModelVisionById(
+          ...backfillModelCapabilityMaps(
             next,
             settings.openaiCompatible.modelVisionById,
+            settings.openaiCompatible.modelThinkingById,
           ),
         },
       });
@@ -212,7 +234,11 @@ export function ProviderSettingsPanel() {
       await save({
         dashscope: {
           enabledModelIds: next,
-          modelVisionById: backfillModelVisionById(next, settings.dashscope.modelVisionById),
+          ...backfillModelCapabilityMaps(
+            next,
+            settings.dashscope.modelVisionById,
+            settings.dashscope.modelThinkingById,
+          ),
         },
       });
     } else {
@@ -220,16 +246,17 @@ export function ProviderSettingsPanel() {
       await save({
         openaiCompatible: {
           enabledModelIds: next,
-          modelVisionById: backfillModelVisionById(
+          ...backfillModelCapabilityMaps(
             next,
             settings.openaiCompatible.modelVisionById,
+            settings.openaiCompatible.modelThinkingById,
           ),
         },
       });
     }
   };
 
-  const saveModelVision = async (vision: boolean) => {
+  const saveModelCapabilities = async (vision: boolean, thinking: boolean) => {
     if (!editingModelId) return;
     if (settings.providerMode === 'dashscope') {
       await save({
@@ -237,6 +264,10 @@ export function ProviderSettingsPanel() {
           modelVisionById: {
             ...settings.dashscope.modelVisionById,
             [editingModelId]: vision,
+          },
+          modelThinkingById: {
+            ...settings.dashscope.modelThinkingById,
+            [editingModelId]: thinking,
           },
         },
       });
@@ -246,6 +277,10 @@ export function ProviderSettingsPanel() {
           modelVisionById: {
             ...settings.openaiCompatible.modelVisionById,
             [editingModelId]: vision,
+          },
+          modelThinkingById: {
+            ...settings.openaiCompatible.modelThinkingById,
+            [editingModelId]: thinking,
           },
         },
       });
@@ -372,7 +407,7 @@ export function ProviderSettingsPanel() {
         <section className="models-section">
           <h3>启用模型（{isDashscope ? 'DashScope' : 'OpenAI 兼容'}）</h3>
           <div className="enabled-models-section">
-            <h4>已选模型（拖动排序 · 🖼 表示已启用图片）</h4>
+            <h4>已选模型（拖动排序 · 🖼 图片 · 💭 思考）</h4>
             <EnabledModelsBar
               modelIds={activeProfile.enabledModelIds}
               settings={settings}
@@ -411,7 +446,8 @@ export function ProviderSettingsPanel() {
         <ModelVisionEditDialog
           modelId={editingModelId}
           visionEnabled={getModelVisionEnabled(editingModelId, settings)}
-          onSave={(vision) => void saveModelVision(vision)}
+          thinkingEnabled={getModelThinkingEnabled(editingModelId, settings)}
+          onSave={(vision, thinking) => void saveModelCapabilities(vision, thinking)}
           onClose={() => setEditingModelId(null)}
         />
       )}

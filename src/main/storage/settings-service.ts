@@ -53,6 +53,7 @@ function toAppSettings(persisted: SettingsPersisted): AppSettings {
       availableModels: persisted.dashscope.availableModels,
       enabledModelIds: persisted.dashscope.enabledModelIds,
       modelVisionById: persisted.dashscope.modelVisionById ?? {},
+      modelThinkingById: persisted.dashscope.modelThinkingById ?? {},
     },
     openaiCompatible: {
       baseURL: persisted.openaiCompatible.baseURL,
@@ -60,6 +61,7 @@ function toAppSettings(persisted: SettingsPersisted): AppSettings {
       availableModels: persisted.openaiCompatible.availableModels,
       enabledModelIds: persisted.openaiCompatible.enabledModelIds,
       modelVisionById: persisted.openaiCompatible.modelVisionById ?? {},
+      modelThinkingById: persisted.openaiCompatible.modelThinkingById ?? {},
     },
     objectStorage: {
       enabled: persisted.objectStorage.enabled,
@@ -117,6 +119,9 @@ function applyDashScopeInput(
   if (input.modelVisionById !== undefined) {
     persisted.dashscope.modelVisionById = input.modelVisionById;
   }
+  if (input.modelThinkingById !== undefined) {
+    persisted.dashscope.modelThinkingById = input.modelThinkingById;
+  }
 }
 
 function applyObjectStorageInput(
@@ -161,6 +166,9 @@ function applyOpenAICompatibleInput(
   }
   if (input.modelVisionById !== undefined) {
     persisted.openaiCompatible.modelVisionById = input.modelVisionById;
+  }
+  if (input.modelThinkingById !== undefined) {
+    persisted.openaiCompatible.modelThinkingById = input.modelThinkingById;
   }
 }
 

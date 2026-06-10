@@ -14,6 +14,7 @@ import {
   assertRemoteAccessibleImageUrl,
   DASHSCOPE_IMAGE_URL_HINT,
 } from '@shared/image-url-validation';
+import { getModelThinkingEnabled } from '@shared/model-thinking-config';
 import { getModelVisionEnabled } from '@shared/model-vision-config';
 import { getObjectStorageUploadBlockReason } from '@shared/settings-readiness';
 import { getApi } from '../services/api';
@@ -172,7 +173,7 @@ function startAssistantStream(params: StartAssistantStreamParams): void {
     syncActiveStreamingUi(set, get);
   };
 
-  const enableThinking = settings.enableThinking;
+  const enableThinking = settings.enableThinking && getModelThinkingEnabled(model, settings);
   const enableSearch = settings.enableSearch;
   const modelVisionEnabled = getModelVisionEnabled(model, settings);
 

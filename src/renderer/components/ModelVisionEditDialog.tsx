@@ -4,16 +4,25 @@ import '../styles/model-vision-dialog.css';
 interface Props {
   modelId: string;
   visionEnabled: boolean;
-  onSave: (vision: boolean) => void;
+  thinkingEnabled: boolean;
+  onSave: (vision: boolean, thinking: boolean) => void;
   onClose: () => void;
 }
 
-export function ModelVisionEditDialog({ modelId, visionEnabled, onSave, onClose }: Props) {
+export function ModelVisionEditDialog({
+  modelId,
+  visionEnabled,
+  thinkingEnabled,
+  onSave,
+  onClose,
+}: Props) {
   const [vision, setVision] = useState(visionEnabled);
+  const [thinking, setThinking] = useState(thinkingEnabled);
 
   useEffect(() => {
     setVision(visionEnabled);
-  }, [visionEnabled, modelId]);
+    setThinking(thinkingEnabled);
+  }, [visionEnabled, thinkingEnabled, modelId]);
 
   return (
     <div className="model-vision-dialog-backdrop" role="presentation" onClick={onClose}>
@@ -32,11 +41,22 @@ export function ModelVisionEditDialog({ modelId, visionEnabled, onSave, onClose 
         <p className="model-vision-dialog-hint">
           开启后，聊天页在选择该模型时可添加图片附件；关闭则禁用图片按钮。
         </p>
+        <label className="model-vision-dialog-toggle model-vision-dialog-toggle-spaced">
+          <input
+            type="checkbox"
+            checked={thinking}
+            onChange={(e) => setThinking(e.target.checked)}
+          />
+          <span>支持深度思考</span>
+        </label>
+        <p className="model-vision-dialog-hint">
+          开启后，聊天页可对该模型使用深度思考（enable_thinking）；关闭则禁用思考开关。
+        </p>
         <div className="model-vision-dialog-actions">
           <button type="button" className="secondary" onClick={onClose}>
             取消
           </button>
-          <button type="button" className="primary" onClick={() => onSave(vision)}>
+          <button type="button" className="primary" onClick={() => onSave(vision, thinking)}>
             保存
           </button>
         </div>

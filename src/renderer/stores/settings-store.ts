@@ -19,6 +19,7 @@ function createEmptySettings(): AppSettings {
       availableModels: [],
       enabledModelIds: [],
       modelVisionById: {},
+      modelThinkingById: {},
     },
     openaiCompatible: {
       baseURL: 'https://api.openai.com/v1',
@@ -26,6 +27,7 @@ function createEmptySettings(): AppSettings {
       availableModels: [],
       enabledModelIds: [],
       modelVisionById: {},
+      modelThinkingById: {},
     },
     objectStorage: {
       enabled: false,

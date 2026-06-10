@@ -12,19 +12,21 @@ export interface BuildModelChatParamsInput {
 }
 
 /**
- * 为 OpenAI 兼容 Chat Completions 请求生成顶层扩展参数（如用户自建兼容网关仍指向百炼）。
+ * 为 OpenAI 兼容 Chat Completions 请求生成扩展参数。
+ * 思考开关使用 chat_template_kwargs.enable_thinking；百炼兼容端点另含联网搜索参数。
  */
 export function buildModelChatParams(input: BuildModelChatParamsInput): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    chat_template_kwargs: {
+      enable_thinking: input.enableThinking,
+    },
+  };
+
   if (!isDashScopeCompatibleBaseUrl(input.baseURL)) {
-    return {};
+    return body;
   }
 
   const caps = resolveModelCapabilities(input.model);
-  const body: Record<string, unknown> = {};
-
-  if (input.enableThinking && caps.thinking) {
-    body.enable_thinking = true;
-  }
 
   if (input.enableSearch && caps.webSearch) {
     body.enable_search = true;
@@ -32,7 +34,7 @@ export function buildModelChatParams(input: BuildModelChatParamsInput): Record<s
     const searchOptions: Record<string, unknown> = {
       search_strategy: strategy,
     };
-    if (input.enableThinking && caps.thinking) {
+    if (input.enableThinking) {
       searchOptions.forced_search = true;
     }
     if (caps.searchEnableSource || strategy === 'agent' || strategy === 'agent_max') {

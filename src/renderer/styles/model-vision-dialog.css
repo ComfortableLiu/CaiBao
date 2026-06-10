@@ -39,6 +39,10 @@
   cursor: pointer;
 }
 
+.model-vision-dialog-toggle-spaced {
+  margin-top: 16px;
+}
+
 .model-vision-dialog-hint {
   margin: 12px 0 0;
   font-size: 12px;
